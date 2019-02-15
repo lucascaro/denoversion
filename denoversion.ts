@@ -1,4 +1,5 @@
 #!/usr/bin/env deno --allow-write --allow-read
+
 import ArgParser from "args.ts";
 import { fileExists, readStringSync, writeStringSync } from "fileutils.ts";
 import { BumpTarget, bumpVersion, canonical, isValid } from "semver.ts";
