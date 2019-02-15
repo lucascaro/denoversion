@@ -1,4 +1,4 @@
-#!/usr/bin/env deno --allow-write --allow-read
+#!/usr/bin/env deno --allow-write --allow-read --allow-all
 
 import ArgParser from "args.ts";
 import { fileExists, readStringSync, writeStringSync } from "fileutils.ts";

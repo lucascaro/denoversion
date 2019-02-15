@@ -17,7 +17,7 @@
     ],
     "target": "esnext",
     "paths": {
-      "deno": ["$HOME/.deno/deno.d.ts"],
+      "deno": ["../../../.deno/deno.d.ts"],
       "https://*": ["../../../.deno/deps/https/*"],
       "http://*": ["../../../.deno/deps/http/*"]
     }
