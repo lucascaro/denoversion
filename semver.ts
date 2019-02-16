@@ -21,7 +21,7 @@ export function bumpVersion(version: string, target: BumpTarget): string {
   return `v${parts.join(".")}`;
 }
 
-export function canonical(version: string): string {
+export function canonicalVersionString(version: string): string {
   if (!isValid(version)) {
     throw new TypeError(`Invalid version string: ${version}`);
   }

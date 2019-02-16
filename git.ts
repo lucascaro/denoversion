@@ -4,8 +4,9 @@ export async function gitCheckCleanState() {
     args: ["git", "diff", "--quiet"],
     stdout: "piped"
   });
-  const status = await git.status();
-  return status.success;
+  if (!(await git.status())) {
+    throw new Error("Repository is not in a clean state. Aborting.");
+  }
 }
 
 export async function gitCommitFileChanges(fileName: string, message: string) {
