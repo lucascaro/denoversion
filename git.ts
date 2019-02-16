@@ -19,9 +19,9 @@ export async function gitCommitFileChanges(fileName: string, message: string) {
   }
 }
 
-export async function gitCreateTag(name: string) {
+export async function gitCreateTag(name: string, msg: string) {
   const git = run({
-    args: ["git", "tag", name]
+    args: ["git", "tag", "-a", name, "-m", msg]
   });
 
   const status = await git.status();

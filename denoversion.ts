@@ -88,10 +88,11 @@ async function bump(parser: ArgParser) {
   }
 
   const bumped = bumpVersion(version, BumpTarget[target]);
+  const numeric = bumped.slice(1);
   console.log(bumped);
   writeStringSync(VERSIONFILE, bumped);
   await gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`);
-  await gitCreateTag(bumped);
+  await gitCreateTag(bumped, `Version ${numeric}`);
 
   if (parser.getOpt("push")) {
     console.log("pushing to remote via git push --follow-tags");
