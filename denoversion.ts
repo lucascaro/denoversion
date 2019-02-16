@@ -1,7 +1,8 @@
-#!/usr/bin/env deno --allow-write --allow-read
+#!/usr/bin/env deno --allow-write --allow-read --allow-run
 
 import ArgParser from "args.ts";
 import { fileExists, readStringSync, writeStringSync } from "fileutils.ts";
+import { gitCheckCleanState, gitCommitFileChanges } from "git.ts";
 import { BumpTarget, bumpVersion, canonical, isValid } from "semver.ts";
 
 const VERSIONFILE = "VERSION";
@@ -67,16 +68,22 @@ function current(parser: ArgParser) {
   console.log(canonical(version));
 }
 
-function bump(parser: ArgParser) {
+async function bump(parser: ArgParser) {
   const version = readStringSync(VERSIONFILE);
-  const target = parser.getArg(1, "patch");
+  if (!(await gitCheckCleanState())) {
+    console.error("Repository is not in a clean state. Aborting.");
+    return;
+  }
 
+  const target = parser.getArg(1, "patch");
   if (!BumpTarget[target]) {
     console.error(
       `Invalid target: ${target}. Must be one of major, minor, patch`
     );
   }
+
   const bumped = bumpVersion(version, BumpTarget[target]);
   console.log(bumped);
   writeStringSync(VERSIONFILE, bumped);
+  gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`);
 }
