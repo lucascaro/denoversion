@@ -2,7 +2,7 @@
 
 import ArgParser from "args.ts";
 import { fileExists, readStringSync, writeStringSync } from "fileutils.ts";
-import { gitCheckCleanState, gitCommitFileChanges } from "git.ts";
+import { gitCheckCleanState, gitCommitFileChanges, gitCreateTag } from "git.ts";
 import { BumpTarget, bumpVersion, canonical, isValid } from "semver.ts";
 
 const VERSIONFILE = "VERSION";
@@ -86,4 +86,5 @@ async function bump(parser: ArgParser) {
   console.log(bumped);
   writeStringSync(VERSIONFILE, bumped);
   gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`);
+  gitCreateTag(bumped);
 }
