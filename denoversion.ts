@@ -60,7 +60,7 @@ async function init(parser: ArgParser) {
   if (!parser.getOpt("force")) {
     await gitCheckCleanState();
   }
-  await updateVersion(version);
+  await updateVersion(parser, version);
 }
 
 function setVersion(parser: ArgParser) {
@@ -97,10 +97,10 @@ async function bump(parser: ArgParser) {
   }
 
   const bumped = bumpVersion(version, BumpTarget[target]);
-  await updateVersion(bumped);
+  await updateVersion(parser, bumped);
 }
 
-async function updateVersion(version: string) {
+async function updateVersion(parser: ArgParser, version: string) {
   const canonical = canonicalVersionString(version);
   const numeric = canonical.slice(1);
   console.log(canonical);
