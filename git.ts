@@ -10,6 +10,13 @@ export async function gitCheckCleanState() {
 }
 
 export async function gitCommitFileChanges(fileName: string, message: string) {
+  const gitAdd = run({
+    args: ["git", "add", fileName]
+  });
+  if (!(await gitAdd.status()).success) {
+    throw new Error(`Error running git add.`);
+  }
+
   const git = run({
     args: ["git", "commit", "-m", message, fileName]
   });

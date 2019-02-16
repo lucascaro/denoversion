@@ -1,7 +1,8 @@
 #!/usr/bin/env deno --allow-write --allow-read --allow-run
 
 import ArgParser from "args.ts";
-import { fileExists, readStringSync, writeStringSync } from "fileutils.ts";
+import { exit } from "deno";
+import { fileExists } from "fileutils.ts";
 import {
   gitCheckCleanState,
   gitCommitFileChanges,
@@ -12,10 +13,15 @@ import {
   BumpTarget,
   bumpVersion,
   canonicalVersionString,
-  isValid
+  isValid,
+  readVersionFileSync,
+  writeVersionFileSync
 } from "semver.ts";
+// Import local VERSION file for denoversion
+import VERSION from "VERSION.json";
 
-const VERSIONFILE = "VERSION";
+// File name to use for VERSION files.
+const VERSIONFILE = "VERSION.json";
 
 const parser = new ArgParser({
   boolean: ["f"],
@@ -24,7 +30,7 @@ const parser = new ArgParser({
   }
 });
 
-const command = parser.getArg(0, "current");
+const command = parser.getArg(0, "version");
 runCommand(command, parser);
 
 function runCommand(command: string, parser: ArgParser) {
@@ -38,15 +44,20 @@ function runCommand(command: string, parser: ArgParser) {
         return setVersion(parser);
       case "bump":
         return bump(parser);
-
+      case "version":
+        return printVersionInfo(parser);
       default:
         console.error(`Unknown command ${command}`);
     }
   } catch (e) {
     console.error(e.message);
+    exit(1);
   }
 }
 
+async function printVersionInfo(parser: ArgParser) {
+  console.log(`denoversion ${VERSION.version}`);
+}
 async function init(parser: ArgParser) {
   const version = parser.getArg(1);
   if (!parser.getOpt("force") && fileExists(VERSIONFILE)) {
@@ -69,22 +80,22 @@ function setVersion(parser: ArgParser) {
     console.error("Please provide a valid version number");
     return;
   }
-  const canon = canonicalVersionString(version);
-  writeStringSync(VERSIONFILE, canon);
-  console.log(canon);
+  updateVersion(parser, version);
 }
 
 function current(parser: ArgParser) {
   if (!fileExists(VERSIONFILE)) {
-    console.error("Cannot find version file");
+    console.error(
+      `Cannot find version file ${VERSIONFILE} in the current directory.`
+    );
     return;
   }
-  const version = readStringSync(VERSIONFILE);
+  const version = readVersionFileSync(VERSIONFILE);
   console.log(canonicalVersionString(version));
 }
 
 async function bump(parser: ArgParser) {
-  const version = readStringSync(VERSIONFILE);
+  const version = readVersionFileSync(VERSIONFILE);
   if (!parser.getOpt("force")) {
     await gitCheckCleanState();
   }
@@ -104,8 +115,8 @@ async function updateVersion(parser: ArgParser, version: string) {
   const canonical = canonicalVersionString(version);
   const numeric = canonical.slice(1);
   console.log(canonical);
-  writeStringSync(VERSIONFILE, canonical);
-  await gitCommitFileChanges(VERSIONFILE, `Bump version to ${canonical}`);
+  writeVersionFileSync(VERSIONFILE, canonical);
+  await gitCommitFileChanges(VERSIONFILE, `Set version to ${canonical}`);
   await gitCreateTag(canonical, `Version ${numeric}`);
 
   if (parser.getOpt("push")) {

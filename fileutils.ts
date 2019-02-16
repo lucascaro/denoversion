@@ -1,7 +1,7 @@
 import { readDirSync, readFileSync, writeFileSync } from "deno";
 
 export function fileExists(filename: string): boolean {
-  return readDirSync(".").filter((f) => f.name === "VERSION").length > 0;
+  return readDirSync(".").filter((f) => f.name === filename).length > 0;
 }
 
 export function writeStringSync(filename: string, data: string) {
