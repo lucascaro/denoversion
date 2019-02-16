@@ -13,7 +13,10 @@ export async function gitCommitFileChanges(fileName: string, message: string) {
     args: ["git", "commit", "-m", message, fileName]
   });
 
-  return (await git.status()).success;
+  const status = await git.status();
+  if (!status.success) {
+    throw new Error(`Error ${status.code} creating git commit.`);
+  }
 }
 
 export async function gitCreateTag(name: string) {
@@ -21,5 +24,19 @@ export async function gitCreateTag(name: string) {
     args: ["git", "tag", name]
   });
 
-  return (await git.status()).success;
+  const status = await git.status();
+  if (!status.success) {
+    throw new Error(`Error ${status.code} creating git tag.`);
+  }
+}
+
+export async function gitPushWithTags() {
+  const git = run({
+    args: ["git", "push", "--follow-tags"]
+  });
+
+  const status = await git.status();
+  if (!status.success) {
+    throw new Error(`Error ${status.code} pushing to remote.`);
+  }
 }

@@ -2,7 +2,12 @@
 
 import ArgParser from "args.ts";
 import { fileExists, readStringSync, writeStringSync } from "fileutils.ts";
-import { gitCheckCleanState, gitCommitFileChanges, gitCreateTag } from "git.ts";
+import {
+  gitCheckCleanState,
+  gitCommitFileChanges,
+  gitCreateTag,
+  gitPushWithTags
+} from "git.ts";
 import { BumpTarget, bumpVersion, canonical, isValid } from "semver.ts";
 
 const VERSIONFILE = "VERSION";
@@ -85,10 +90,11 @@ async function bump(parser: ArgParser) {
   const bumped = bumpVersion(version, BumpTarget[target]);
   console.log(bumped);
   writeStringSync(VERSIONFILE, bumped);
-  if (!(await gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`))) {
-    console.error(`Error creating git commit.`);
-  }
-  if (!(await gitCreateTag(bumped))) {
-    console.error(`Error creating git tag.`);
+  await gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`);
+  await gitCreateTag(bumped);
+
+  if (parser.getOpt("push")) {
+    console.log("pushing to remote via git push --follow-tags");
+    await gitPushWithTags();
   }
 }
