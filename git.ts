@@ -10,7 +10,8 @@ export async function gitCheckCleanState() {
 
 export async function gitCommitFileChanges(fileName: string, message: string) {
   const git = run({
-    args: ["git", "commit", "-m", message, fileName]
+    args: ["git", "commit", "-m", message, fileName],
+    stdout: "piped"
   });
 
   return (await git.status()).success;
@@ -18,7 +19,8 @@ export async function gitCommitFileChanges(fileName: string, message: string) {
 
 export async function gitCreateTag(name: string) {
   const git = run({
-    args: ["git", "tag", name]
+    args: ["git", "tag", name],
+    stdout: "piped"
   });
 
   return (await git.status()).success;
