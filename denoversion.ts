@@ -70,7 +70,7 @@ function current(parser: ArgParser) {
 
 async function bump(parser: ArgParser) {
   const version = readStringSync(VERSIONFILE);
-  if (!(await gitCheckCleanState())) {
+  if (!parser.getOpt("force") && !(await gitCheckCleanState())) {
     console.error("Repository is not in a clean state. Aborting.");
     return;
   }
@@ -85,6 +85,10 @@ async function bump(parser: ArgParser) {
   const bumped = bumpVersion(version, BumpTarget[target]);
   console.log(bumped);
   writeStringSync(VERSIONFILE, bumped);
-  gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`);
-  gitCreateTag(bumped);
+  if (!(await gitCommitFileChanges(VERSIONFILE, `Bump version to ${bumped}`))) {
+    console.error(`Error creating git commit.`);
+  }
+  if (!(await gitCreateTag(bumped))) {
+    console.error(`Error creating git tag.`);
+  }
 }
