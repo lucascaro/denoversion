@@ -80,6 +80,11 @@ function setVersion(parser: ArgParser) {
     console.error("Please provide a valid version number");
     return;
   }
+  const oldVersion = readVersionFileSync(VERSIONFILE);
+  if (canonicalVersionString(version) == oldVersion) {
+    console.error(`Version is already ${oldVersion}`);
+    return;
+  }
   updateVersion(parser, version);
 }
 
