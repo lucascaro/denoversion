@@ -74,3 +74,7 @@ v1.3.0
 $ denoversion bump major
 v2.0.0
 ```
+
+## Feedback
+
+If you have comments, feature requests, or have found a bug, leave an issue in the issue tracker!
