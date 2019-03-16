@@ -1,20 +1,7 @@
 import ArgParser from "args.ts";
-import { exit } from "deno";
 import { fileExists } from "fileutils.ts";
-import {
-  gitCheckCleanState,
-  gitCommitFileChanges,
-  gitCreateTag,
-  gitPushWithTags
-} from "git.ts";
-import {
-  BumpTarget,
-  bumpVersion,
-  canonicalVersionString,
-  isValid,
-  readVersionFileSync,
-  writeVersionFileSync
-} from "semver.ts";
+import { gitCheckCleanState, gitCommitFileChanges, gitCreateTag, gitPushWithTags } from "git.ts";
+import { BumpTarget, bumpVersion, canonicalVersionString, isValid, readVersionFileSync, writeVersionFileSync } from "semver.ts";
 // Import local VERSION file for denoversion
 import VERSION from "../VERSION.json";
 
@@ -39,7 +26,7 @@ export function runCommand(command: string, parser: ArgParser) {
     }
   } catch (e) {
     console.error(e.message);
-    exit(1);
+    Deno.exit(1);
   }
 }
 

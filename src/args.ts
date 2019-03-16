@@ -1,11 +1,10 @@
-import { args } from "deno";
 import { ArgParsingOptions, parse } from "https://deno.land/x/flags/mod.ts";
 
 export default class ArgParser {
   public parsed = null;
   public positional: string[] = [];
   constructor(public parseOpts: ArgParsingOptions) {
-    this.parsed = new Map(Object.entries(parse(args.slice(1), parseOpts)));
+    this.parsed = new Map(Object.entries(parse(Deno.args.slice(1), parseOpts)));
     this.positional = this.parsed.get("_").map(String);
   }
 

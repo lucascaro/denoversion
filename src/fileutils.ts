@@ -1,4 +1,4 @@
-import { readDirSync, readFileSync, writeFileSync } from "deno";
+const { readDirSync, readFileSync, writeFileSync } = Deno;
 
 export function fileExists(filename: string): boolean {
   return readDirSync(".").filter((f) => f.name === filename).length > 0;

@@ -1,4 +1,4 @@
-import { run } from "deno";
+const { run } = Deno;
 export async function gitCheckCleanState() {
   const git = run({
     args: ["git", "diff", "--quiet"],
