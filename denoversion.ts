@@ -1,6 +1,6 @@
 #!/usr/bin/env deno --allow-write --allow-read --allow-run
-import ArgParser from "src/args.ts";
-import { runCommand } from "src/denoversion.ts";
+import ArgParser from "./src/args.ts";
+import { runCommand } from "./src/denoversion.ts";
 
 const parser = new ArgParser({
   boolean: ["f"],
@@ -9,5 +9,5 @@ const parser = new ArgParser({
   }
 });
 
-const command = parser.getArg(0, "version");
+const command = parser.getArg(0, "help");
 runCommand(command, parser);

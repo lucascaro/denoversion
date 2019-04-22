@@ -1,4 +1,4 @@
-import { readStringSync, writeStringSync } from "fileutils.ts";
+import { readStringSync, writeStringSync } from "./fileutils.ts";
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)\.(\d+)$/;
 

@@ -36,16 +36,16 @@ declare namespace Deno {
     [index: string]: string;
   };
   /**
-   * cwd() Return a string representing the current working directory.
+   * `cwd()` Return a string representing the current working directory.
    * If the current directory can be reached via multiple paths
-   * (due to symbolic links), cwd() may return
+   * (due to symbolic links), `cwd()` may return
    * any one of them.
-   * throws NotFound exception if directory not available
+   * throws `NotFound` exception if directory not available
    */
   export function cwd(): string;
   /**
-   * chdir() Change the current working directory to path.
-   * throws NotFound exception if directory not available
+   * `chdir()` Change the current working directory to path.
+   * throws `NotFound` exception if directory not available
    */
   export function chdir(directory: string): void;
   export interface ReadResult {
@@ -86,6 +86,9 @@ declare namespace Deno {
      */
     read(p: Uint8Array): Promise<ReadResult>;
   }
+  export interface SyncReader {
+    readSync(p: Uint8Array): ReadResult;
+  }
   export interface Writer {
     /** Writes `p.byteLength` bytes from `p` to the underlying data
      * stream. It resolves to the number of bytes written from `p` (`0` <= `n` <=
@@ -96,6 +99,9 @@ declare namespace Deno {
      * Implementations must not retain `p`.
      */
     write(p: Uint8Array): Promise<number>;
+  }
+  export interface SyncWriter {
+    writeSync(p: Uint8Array): number;
   }
   export interface Closer {
     close(): void;
@@ -112,6 +118,9 @@ declare namespace Deno {
      * on the underlying object is implementation-dependent.
      */
     seek(offset: number, whence: SeekMode): Promise<void>;
+  }
+  export interface SyncSeeker {
+    seekSync(offset: number, whence: SeekMode): void;
   }
   export interface ReadCloser extends Reader, Closer {}
   export interface WriteCloser extends Writer, Closer {}
@@ -134,6 +143,12 @@ declare namespace Deno {
    *      }
    */
   export function toAsyncIterator(r: Reader): AsyncIterableIterator<Uint8Array>;
+  /** Open a file and return an instance of the `File` object
+   *  synchronously.
+   *
+   *       const file = Deno.openSync("/foo/bar.txt");
+   */
+  export function openSync(filename: string, mode?: OpenMode): File;
   /** Open a file and return an instance of the `File` object.
    *
    *       (async () => {
@@ -141,18 +156,64 @@ declare namespace Deno {
    *       })();
    */
   export function open(filename: string, mode?: OpenMode): Promise<File>;
+  /** Read synchronously from a file ID into an array buffer.
+   *
+   * Return `ReadResult` for the operation.
+   *
+   *      const file = Deno.openSync("/foo/bar.txt");
+   *      const buf = new Uint8Array(100);
+   *      const { nread, eof } = Deno.readSync(file.rid, buf);
+   *      const text = new TextDecoder().decode(buf);
+   *
+   */
+  export function readSync(rid: number, p: Uint8Array): ReadResult;
   /** Read from a file ID into an array buffer.
    *
    * Resolves with the `ReadResult` for the operation.
+   *
+   *       (async () => {
+   *         const file = await Deno.open("/foo/bar.txt");
+   *         const buf = new Uint8Array(100);
+   *         const { nread, eof } = await Deno.read(file.rid, buf);
+   *         const text = new TextDecoder().decode(buf);
+   *       })();
    */
   export function read(rid: number, p: Uint8Array): Promise<ReadResult>;
+  /** Write synchronously to the file ID the contents of the array buffer.
+   *
+   * Resolves with the number of bytes written.
+   *
+   *       const encoder = new TextEncoder();
+   *       const data = encoder.encode("Hello world\n");
+   *       const file = Deno.openSync("/foo/bar.txt");
+   *       Deno.writeSync(file.rid, data);
+   */
+  export function writeSync(rid: number, p: Uint8Array): number;
   /** Write to the file ID the contents of the array buffer.
    *
    * Resolves with the number of bytes written.
+   *
+   *      (async () => {
+   *        const encoder = new TextEncoder();
+   *        const data = encoder.encode("Hello world\n");
+   *        const file = await Deno.open("/foo/bar.txt");
+   *        await Deno.write(file.rid, data);
+   *      })();
+   *
    */
   export function write(rid: number, p: Uint8Array): Promise<number>;
+  /** Seek a file ID synchronously to the given offset under mode given by `whence`.
+   *
+   *       const file = Deno.openSync("/foo/bar.txt");
+   *       Deno.seekSync(file.rid, 0, 0);
+   */
+  export function seekSync(rid: number, offset: number, whence: SeekMode): void;
   /** Seek a file ID to the given offset under mode given by `whence`.
    *
+   *      (async () => {
+   *        const file = await Deno.open("/foo/bar.txt");
+   *        await Deno.seek(file.rid, 0, 0);
+   *      })();
    */
   export function seek(
     rid: number,
@@ -162,12 +223,23 @@ declare namespace Deno {
   /** Close the file ID. */
   export function close(rid: number): void;
   /** The Deno abstraction for reading and writing files. */
-  export class File implements Reader, Writer, Seeker, Closer {
+  export class File
+    implements
+      Reader,
+      SyncReader,
+      Writer,
+      SyncWriter,
+      Seeker,
+      SyncSeeker,
+      Closer {
     readonly rid: number;
     constructor(rid: number);
     write(p: Uint8Array): Promise<number>;
+    writeSync(p: Uint8Array): number;
     read(p: Uint8Array): Promise<ReadResult>;
+    readSync(p: Uint8Array): ReadResult;
     seek(offset: number, whence: SeekMode): Promise<void>;
+    seekSync(offset: number, whence: SeekMode): void;
     close(): void;
   }
   /** An instance of `File` for stdin. */
@@ -203,7 +275,7 @@ declare namespace Deno {
   /** A Buffer is a variable-sized buffer of bytes with read() and write()
    * methods. Based on https://golang.org/pkg/bytes/#Buffer
    */
-  export class Buffer implements Reader, Writer {
+  export class Buffer implements Reader, SyncReader, Writer, SyncWriter {
     private buf;
     private off;
     constructor(ab?: ArrayBuffer);
@@ -247,11 +319,13 @@ declare namespace Deno {
      */
     private _tryGrowByReslice;
     private _reslice;
-    /** read() reads the next len(p) bytes from the buffer or until the buffer
+    /** readSync() reads the next len(p) bytes from the buffer or until the buffer
      * is drained. The return value n is the number of bytes read. If the
      * buffer has no data to return, eof in the response will be true.
      */
+    readSync(p: Uint8Array): ReadResult;
     read(p: Uint8Array): Promise<ReadResult>;
+    writeSync(p: Uint8Array): number;
     write(p: Uint8Array): Promise<number>;
     /** _grow() grows the buffer to guarantee space for n more bytes.
      * It returns the index where bytes should be written.
@@ -271,10 +345,16 @@ declare namespace Deno {
      * Based on https://golang.org/pkg/bytes/#Buffer.ReadFrom
      */
     readFrom(r: Reader): Promise<number>;
+    /** Sync version of `readFrom`
+     */
+    readFromSync(r: SyncReader): number;
   }
   /** Read `r` until EOF and return the content as `Uint8Array`.
    */
   export function readAll(r: Reader): Promise<Uint8Array>;
+  /** Read synchronously `r` until EOF and return the content as `Uint8Array`.
+   */
+  export function readAllSync(r: SyncReader): Uint8Array;
   /** Creates a new directory with the specified path synchronously.
    * If `recursive` is set to true, nested directories will be created (also known
    * as "mkdir -p").
@@ -498,6 +578,16 @@ declare namespace Deno {
    *       assert(fileInfo.isFile());
    */
   export function statSync(filename: string): FileInfo;
+  /** Synchronously creates `newname` as a hard link to `oldname`.
+   *
+   *       Deno.linkSync("old/name", "new/name");
+   */
+  export function linkSync(oldname: string, newname: string): void;
+  /** Creates `newname` as a hard link to `oldname`.
+   *
+   *       await Deno.link("old/name", "new/name");
+   */
+  export function link(oldname: string, newname: string): Promise<void>;
   /** Synchronously creates `newname` as a symbolic link to `oldname`. The type
    * argument can be set to `dir` or `file` and is only available on Windows
    * (ignored on other platforms).
@@ -591,7 +681,9 @@ declare namespace Deno {
     HttpOther = 35,
     TooLarge = 36,
     InvalidUri = 37,
-    InvalidSeekMode = 38
+    InvalidSeekMode = 38,
+    OpNotAvaiable = 39,
+    WorkerInitFailed = 40
   }
   /** A Deno specific error.  The `kind` property is set to a specific error code
    * which can be used to in application logic.
@@ -612,27 +704,6 @@ declare namespace Deno {
     readonly kind: T;
     constructor(kind: T, msg: string);
   }
-  type MessageCallback = (msg: Uint8Array) => void;
-  interface EvalErrorInfo {
-    isNativeError: boolean;
-    isCompileError: boolean;
-    thrown: any;
-  }
-  interface Libdeno {
-    recv(cb: MessageCallback): void;
-    send(control: ArrayBufferView, data?: ArrayBufferView): null | Uint8Array;
-    print(x: string, isErr?: boolean): void;
-    shared: ArrayBuffer;
-    /** Evaluate provided code in the current context.
-     * It differs from eval(...) in that it does not create a new context.
-     * Returns an array: [output, errInfo].
-     * If an error occurs, `output` becomes null and `errInfo` is non-null.
-     */
-    evalContext(code: string): [any, EvalErrorInfo | null];
-    errorToJSON: (e: Error) => string;
-  }
-  export const libdeno: Libdeno;
-  export {};
   /** Permissions as granted by the caller */
   export interface Permissions {
     read: boolean;
@@ -640,6 +711,7 @@ declare namespace Deno {
     net: boolean;
     env: boolean;
     run: boolean;
+    highPrecision: boolean;
   }
   export type Permission = keyof Permissions;
   /** Inspect granted permissions for the current program.
@@ -754,7 +826,19 @@ declare namespace Deno {
     bytesSentData: number;
     bytesReceived: number;
   }
-  /** Receive metrics from the privileged side of Deno. */
+  /** Receive metrics from the privileged side of Deno.
+   *
+   *      > console.table(Deno.metrics())
+   *      ┌──────────────────┬────────┐
+   *      │     (index)      │ Values │
+   *      ├──────────────────┼────────┤
+   *      │  opsDispatched   │   9    │
+   *      │   opsCompleted   │   9    │
+   *      │ bytesSentControl │  504   │
+   *      │  bytesSentData   │   0    │
+   *      │  bytesReceived   │  856   │
+   *      └──────────────────┴────────┘
+   */
   export function metrics(): Metrics;
   interface ResourceMap {
     [rid: number]: string;
@@ -793,10 +877,15 @@ declare namespace Deno {
     readonly stderr?: ReadCloser;
     status(): Promise<ProcessStatus>;
     /** Buffer the stdout and return it as Uint8Array after EOF.
-     * You must have set stdout to "piped" in when creating the process.
+     * You must set stdout to "piped" when creating the process.
      * This calls close() on stdout after its done.
      */
     output(): Promise<Uint8Array>;
+    /** Buffer the stderr and return it as Uint8Array after EOF.
+     * You must set stderr to "piped" when creating the process.
+     * This calls close() on stderr after its done.
+     */
+    stderrOutput(): Promise<Uint8Array>;
     close(): void;
   }
   export interface ProcessStatus {
@@ -828,10 +917,12 @@ declare namespace Deno {
     static kClear: string;
     static kClearScreenDown: string;
   }
+  export const isConsoleInstance: unique symbol;
   class Console {
     private printFunc;
     indentLevel: number;
     collapsedAt: number | null;
+    [isConsoleInstance]: boolean;
     /** Writes the arguments to stdout */
     log: (...args: unknown[]) => void;
     /** Writes the arguments to stdout */
@@ -869,10 +960,11 @@ declare namespace Deno {
     groupCollapsed: (...label: unknown[]) => void;
     groupEnd: () => void;
     clear: () => void;
+    static [Symbol.hasInstance](instance: Console): boolean;
   }
   /**
-   * inspect() converts input into string that has the same format
-   * as printed by console.log(...);
+   * `inspect()` converts input into string that has the same format
+   * as printed by `console.log(...)`;
    */
   export function inspect(value: unknown, options?: ConsoleOptions): string;
   export type OperatingSystem = "mac" | "win" | "linux";
@@ -910,6 +1002,7 @@ declare interface Window {
   setInterval: typeof timers.setInterval;
   location: domTypes.Location;
   Blob: typeof blob.DenoBlob;
+  File: domTypes.DomFileConstructor;
   CustomEventInit: typeof customEvent.CustomEventInit;
   CustomEvent: typeof customEvent.CustomEvent;
   EventInit: typeof event.EventInit;
@@ -922,7 +1015,11 @@ declare interface Window {
   TextEncoder: typeof textEncoding.TextEncoder;
   TextDecoder: typeof textEncoding.TextDecoder;
   performance: performanceUtil.Performance;
+  onmessage: (e: { data: any }) => void;
   workerMain: typeof workers.workerMain;
+  workerClose: typeof workers.workerClose;
+  postMessage: typeof workers.postMessage;
+  Worker: typeof workers.WorkerImpl;
   Deno: typeof Deno;
 }
 
@@ -938,6 +1035,7 @@ declare const setTimeout: typeof timers.setTimeout;
 declare const setInterval: typeof timers.setInterval;
 declare const location: domTypes.Location;
 declare const Blob: typeof blob.DenoBlob;
+declare const File: domTypes.DomFileConstructor;
 declare const CustomEventInit: typeof customEvent.CustomEventInit;
 declare const CustomEvent: typeof customEvent.CustomEvent;
 declare const EventInit: typeof event.EventInit;
@@ -950,9 +1048,14 @@ declare const FormData: domTypes.FormDataConstructor;
 declare const TextEncoder: typeof textEncoding.TextEncoder;
 declare const TextDecoder: typeof textEncoding.TextDecoder;
 declare const performance: performanceUtil.Performance;
+declare let onmessage: (e: { data: any }) => void;
 declare const workerMain: typeof workers.workerMain;
+declare const workerClose: typeof workers.workerClose;
+declare const postMessage: typeof workers.postMessage;
+declare const Worker: typeof workers.WorkerImpl;
 
 declare type Blob = blob.DenoBlob;
+declare type File = domTypes.DomFile;
 declare type CustomEventInit = customEvent.CustomEventInit;
 declare type CustomEvent = customEvent.CustomEvent;
 declare type EventInit = event.EventInit;
@@ -964,6 +1067,12 @@ declare type Headers = domTypes.Headers;
 declare type FormData = domTypes.FormData;
 declare type TextEncoder = textEncoding.TextEncoder;
 declare type TextDecoder = textEncoding.TextDecoder;
+declare type Worker = workers.Worker;
+
+declare interface ImportMeta {
+  url: string;
+  main: boolean;
+}
 
 declare namespace domTypes {
   export type BufferSource = ArrayBufferView | ArrayBuffer;
@@ -1131,6 +1240,14 @@ declare namespace domTypes {
   export interface DomFile extends Blob {
     readonly lastModified: number;
     readonly name: string;
+  }
+  export interface DomFileConstructor {
+    new (
+      bits: BlobPart[],
+      filename: string,
+      options?: FilePropertyBag
+    ): DomFile;
+    prototype: DomFile;
   }
   export interface FilePropertyBag extends BlobPropertyBag {
     lastModified?: number;
@@ -1534,10 +1651,12 @@ declare namespace consoleTypes {
     static kClear: string;
     static kClearScreenDown: string;
   }
+  export const isConsoleInstance: unique symbol;
   export class Console {
     private printFunc;
     indentLevel: number;
     collapsedAt: number | null;
+    [isConsoleInstance]: boolean;
     /** Writes the arguments to stdout */
     log: (...args: unknown[]) => void;
     /** Writes the arguments to stdout */
@@ -1575,10 +1694,11 @@ declare namespace consoleTypes {
     groupCollapsed: (...label: unknown[]) => void;
     groupEnd: () => void;
     clear: () => void;
+    static [Symbol.hasInstance](instance: Console): boolean;
   }
   /**
-   * inspect() converts input into string that has the same format
-   * as printed by console.log(...);
+   * `inspect()` converts input into string that has the same format
+   * as printed by `console.log(...)`;
    */
   export function inspect(value: unknown, options?: ConsoleOptions): string;
 }
@@ -1601,7 +1721,7 @@ declare namespace event {
   }
   export class Event implements domTypes.Event {
     private _canceledFlag;
-    private _dispatchedFlag;
+    private dispatchedFlag;
     private _initializedFlag;
     private _inPassiveListenerFlag;
     private _stopImmediatePropagationFlag;
@@ -1618,7 +1738,7 @@ declare namespace event {
     readonly dispatched: boolean;
     readonly eventPhase: number;
     readonly initialized: boolean;
-    isTrusted: boolean;
+    readonly isTrusted: boolean;
     readonly target: domTypes.EventTarget;
     readonly timeStamp: Date;
     readonly type: string;
@@ -1672,6 +1792,7 @@ declare namespace customEvent {
       cancelable?: boolean,
       detail?: any
     ): void;
+    readonly [Symbol.toStringTag]: string;
   }
 }
 
@@ -1691,6 +1812,7 @@ declare namespace eventTarget {
       _options?: domTypes.EventListenerOptions | boolean
     ): void;
     dispatchEvent(event: domTypes.Event): boolean;
+    readonly [Symbol.toStringTag]: string;
   }
 }
 
@@ -1733,6 +1855,9 @@ declare namespace io {
      */
     read(p: Uint8Array): Promise<ReadResult>;
   }
+  export interface SyncReader {
+    readSync(p: Uint8Array): ReadResult;
+  }
   export interface Writer {
     /** Writes `p.byteLength` bytes from `p` to the underlying data
      * stream. It resolves to the number of bytes written from `p` (`0` <= `n` <=
@@ -1743,6 +1868,9 @@ declare namespace io {
      * Implementations must not retain `p`.
      */
     write(p: Uint8Array): Promise<number>;
+  }
+  export interface SyncWriter {
+    writeSync(p: Uint8Array): number;
   }
   export interface Closer {
     close(): void;
@@ -1759,6 +1887,9 @@ declare namespace io {
      * on the underlying object is implementation-dependent.
      */
     seek(offset: number, whence: SeekMode): Promise<void>;
+  }
+  export interface SyncSeeker {
+    seekSync(offset: number, whence: SeekMode): void;
   }
   export interface ReadCloser extends Reader, Closer {}
   export interface WriteCloser extends Writer, Closer {}
@@ -1857,12 +1988,14 @@ declare namespace textEncoding {
     constructor(label?: string, options?: TextDecoderOptions);
     /** Returns the result of running encoding's decoder. */
     decode(input?: domTypes.BufferSource, options?: TextDecodeOptions): string;
+    readonly [Symbol.toStringTag]: string;
   }
   export class TextEncoder {
     /** Returns "utf-8". */
     readonly encoding = "utf-8";
     /** Returns the result of running UTF-8's encoder. */
     encode(input?: string): Uint8Array;
+    readonly [Symbol.toStringTag]: string;
   }
 }
 
@@ -2009,17 +2142,40 @@ declare namespace url {
 }
 
 declare namespace workers {
-  export function postMessage(data: Uint8Array): Promise<void>;
-  export function getMessage(): Promise<null | Uint8Array>;
+  export function encodeMessage(data: any): Uint8Array;
+  export function decodeMessage(dataIntArray: Uint8Array): any;
+  export let onmessage: (e: { data: any }) => void;
+  export function postMessage(data: any): void;
+  export function getMessage(): Promise<any>;
+  export let isClosing: boolean;
   export function workerClose(): void;
   export function workerMain(): Promise<void>;
+  export interface Worker {
+    onerror?: () => void;
+    onmessage?: (e: { data: any }) => void;
+    onmessageerror?: () => void;
+    postMessage(data: any): void;
+    closed: Promise<void>;
+  }
+  export class WorkerImpl implements Worker {
+    private readonly rid;
+    private isClosing;
+    private readonly isClosedPromise;
+    onerror?: () => void;
+    onmessage?: (data: any) => void;
+    onmessageerror?: () => void;
+    constructor(specifier: string);
+    readonly closed: Promise<void>;
+    postMessage(data: any): void;
+    private run;
+  }
 }
 
 declare namespace performanceUtil {
   export class Performance {
-    timeOrigin: number;
-    constructor();
-    /** Returns a current time from Deno's start
+    /** Returns a current time from Deno's start.
+     *  In milliseconds. Flag --allow-high-precision give
+     *  a precise measure.
      *
      *       const t = performance.now();
      *       console.log(`${t} ms since start!`);
@@ -2198,12 +2354,6 @@ declare namespace WebAssembly {
   class RuntimeError extends Error {
     constructor(message: string, fileName?: string, lineNumber?: string);
   }
-}
-
-// TODO Move ImportMeta intos its own lib.import_meta.d.ts file?
-interface ImportMeta {
-  url: string;
-  main: boolean;
 }
 
 /* eslint-enable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */

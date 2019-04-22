@@ -1,7 +1,20 @@
-import ArgParser from "args.ts";
-import { fileExists } from "fileutils.ts";
-import { gitCheckCleanState, gitCommitFileChanges, gitCreateTag, gitPushWithTags } from "git.ts";
-import { BumpTarget, bumpVersion, canonicalVersionString, isValid, readVersionFileSync, writeVersionFileSync } from "semver.ts";
+import ArgParser from "./args.ts";
+import { fileExists } from "./fileutils.ts";
+import {
+  gitCheckCleanState,
+  gitCommitFileChanges,
+  gitCreateTag,
+  gitPushWithTags
+} from "./git.ts";
+import {
+  BumpTarget,
+  bumpVersion,
+  canonicalVersionString,
+  isValid,
+  readVersionFileSync,
+  writeVersionFileSync
+} from "./semver.ts";
+import { stripIndent } from "./strings.ts";
 // Import local VERSION file for denoversion
 import VERSION from "../VERSION.json";
 
@@ -21,13 +34,31 @@ export function runCommand(command: string, parser: ArgParser) {
         return bump(parser);
       case "version":
         return printVersionInfo(parser);
+      case "help":
+        return printHelp();
       default:
-        console.error(`Unknown command ${command}`);
+        console.error(`Unknown command '${command}'`);
     }
   } catch (e) {
     console.error(e.message);
     Deno.exit(1);
   }
+}
+
+function printHelp() {
+  console.log(stripIndent`
+    denoversion ${VERSION.version}
+
+    Usage: denoversion [-f|--force] [command] 
+
+    Commands:
+        init [version]    Initialize versioning in the current directory.
+        current           Show current version.
+        set [version]     Set the current version number to 'version'.
+        bump [type]       Bump the current version. Type is one of major, minor, patch.
+        version           Show denoversion's current version number.
+        help              Show this help.
+  `);
 }
 
 async function printVersionInfo(parser: ArgParser) {
